@@ -64,9 +64,7 @@ class PLA:
         # X modificado para ter nova coluna x0 com valor igual a 1
         self.X = np.c_[np.ones(X.shape[0]), X]
     
-    def fit(self, y, w=None):
-        # reseta os pesos
-        w = np.zeros(3) if not hasattr(w, 'shape') else w
+    def fit(self, y, w=np.zeros(3)):
         num_iters = 0
         
         while True:
@@ -78,6 +76,38 @@ class PLA:
             point = np.random.choice(misclassified)
             w += y[point] * self.X[point]
             num_iters += 1
+    
+    def pocket_fit(self, X, y, max_iterations, w_init=np.zeros(3)):
+        # adiciona coluna x0 igual a 1
+        X = np.c_[np.ones(X.shape[0]), X]
+        # guardar melhor peso
+        best_w = w_init
+        # guardar melhor erro - igual ao erro com peso inicial
+        best_error = np.mean(np.sign(X.dot(w_init)) != y)
+
+        w = w_init.copy()
+        for _ in range(max_iterations):
+            # resultados com peso atual
+            y_pred = np.sign(X.dot(w))
+            
+            # pega um ponto classificado erroneamente
+            misclassified = np.where(y_pred != y)[0]
+            if len(misclassified) == 0:
+                break
+            
+            # cálculo do peso para o ponto
+            point = np.random.choice(misclassified)
+            w += y[point] * X[point]
+            
+            # cálculo do erro atual
+            current_error = np.mean(np.sign(X.dot(w)) != y)
+
+            if current_error < best_error:
+                # guarda erro e peso
+                best_error = current_error
+                best_w = w.copy()
+        
+        return best_w, best_error
 
     def divergence(self, target: Target):
         X_test = get_dataset(self.X.shape[0])
@@ -155,11 +185,10 @@ class LinearRegression:
         # atualiza os pesos com a multiplicação da pseudo-inversa com y
         self.w = np.linalg.pinv(self.X.T.dot(self.X)).dot(self.X.T).dot(y)
     
-    def error(self, y, X=None):
-        # identifica se deve adicionar a coluna em X ou se X já existe na instância
-        X = self.X if not hasattr(X, 'shape') else np.c_[np.ones(X.shape[0]), X]
+def get_error(X, y, w):
+        X = np.c_[np.ones(X.shape[0]), X]
         # faz a multiplicação de X com os pesos para prever o resultado
-        y_pred = np.sign(X.dot(self.w))
+        y_pred = np.sign(X.dot(w))
         # retorna média de resultados errados
         return np.mean(y_pred != y)
 
@@ -175,22 +204,23 @@ def lin_reg_run(N, runs=1000):
         # treina a regressão linear com os dados seguindo a função target
         LR = LinearRegression(X)
         LR.fit(y)
+        w = LR.w
         # calcula erro de dentro da amostra
-        ein += LR.error(y)
+        ein += get_error(X, y, w)
 
         # gero novos dados e novas respostas seguindo a função target
         new_X = get_dataset(N)
         new_y = target.fit(new_X)
         # calcula o erro dos novos dados seguindo o cálculo da Regressão Linear
-        eout += LR.error(new_y, new_X)
+        eout += get_error(new_X, new_y, w)
     
     mean_ein = ein / runs
     mean_eout = eout / runs
     print(f"Erro médio dentro da amostra: Ein = {mean_ein}")
     print(f"Erro médio fora da amostra: Eout = {mean_eout}")
 
-N = 100
-lin_reg_run(N)
+# N = 100
+# lin_reg_run(N)
 
 def LR_PLA_run(N, runs=1000):
     iterations = 0
@@ -210,5 +240,67 @@ def LR_PLA_run(N, runs=1000):
     mean_iterations = iterations / runs
     print(f"N={N} - Iterações médias com pesos iniciais da LR: {mean_iterations}")
 
-N = 10
-LR_PLA_run(N)
+# N = 10
+# LR_PLA_run(N)
+
+def get_noisy_dataset(N, target: Target, noise=0.1):
+    # cria dataset e pega o seu valor correto
+    X = get_dataset(N)
+    y = target.fit(X)
+
+    # escolhe pontos aleatórios e inverte sua classificação -> retorna X e y
+    points = int(N * noise)
+    noisy_indices = np.random.choice(N, points, replace=False)
+    y[noisy_indices] = -y[noisy_indices]
+
+    return X, y
+
+def pocket_PLA_run(N1, N2, max_iter, init_LR, runs=1000):
+    ein = 0
+    eout = 0
+    for _ in range(runs):
+        # cria função alvo e dataset com valores invertidos
+        target = Target()
+        X_train, y_train = get_noisy_dataset(N1, target)
+        
+        # cria pla para usar o pocket pla
+        pla = PLA(X_train)
+        
+        # cria Linear Regression para pegar os pesos
+        LR = LinearRegression(X_train)
+        LR.fit(y_train)
+        w_LR = LR.w
+        
+        # usa o peso ou não
+        if init_LR:
+            w_pocket, best_Ein = pla.pocket_fit(X_train, y_train, max_iter, w_init=w_LR)
+        else:
+            w_pocket, best_Ein = pla.pocket_fit(X_train, y_train, max_iter)
+
+        # cria dataset correto e testa com a função treinada
+        X_test = get_dataset(N2)
+        y_test = target.fit(X_test)
+        
+        # adiciona o erro para a média final depois ser calculada
+        eout += get_error(X_test, y_test, w_pocket)
+        ein += best_Ein
+    
+    mean_ein = ein / runs
+    mean_eout = eout / runs
+    print(f"Média do Erro dentro da Amostra: Ein = {mean_ein}")
+    print(f"Média do Erro fora da Amostra: Eout = {mean_eout}")
+    
+N1 = 100
+N2 = 1000
+
+topics = {
+    "a) W0=0, i=10, N1=100, N2=1000": [N1, N2, 10, False],
+    "b) W0=0, i=50, N1=100, N2=1000": [N1, N2, 50, False],
+    "c) W0=LR, i=10, N1=100, N2=1000": [N1, N2, 10, True],
+    "d) W0=LR, i=50, N1=100, N2=1000": [N1, N2, 50, True],
+}
+
+for key, value in topics.items():
+    print(key)
+    pocket_PLA_run(*value)
+    
