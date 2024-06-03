@@ -64,9 +64,9 @@ class PLA:
         # X modificado para ter nova coluna x0 com valor igual a 1
         self.X = np.c_[np.ones(X.shape[0]), X]
     
-    def fit(self, y):
+    def fit(self, y, w=None):
         # reseta os pesos
-        w = np.zeros(3)
+        w = np.zeros(3) if not hasattr(w, 'shape') else w
         num_iters = 0
         
         while True:
@@ -192,3 +192,23 @@ def lin_reg_run(N, runs=1000):
 N = 100
 lin_reg_run(N)
 
+def LR_PLA_run(N, runs=1000):
+    iterations = 0
+    for _ in range(runs):
+        # gera função target e pega os pesos da LR
+        target = Target()
+        X = get_dataset(N)
+        y = target.fit(X)
+        LR = LinearRegression(X)
+        LR.fit(y)
+        w = LR.w
+
+        # faz o fit com o peso inicial igual ao da LR e calcula as iterações
+        pla = PLA(X)
+        iterations += pla.fit(y, w)
+    
+    mean_iterations = iterations / runs
+    print(f"N={N} - Iterações médias com pesos iniciais da LR: {mean_iterations}")
+
+N = 10
+LR_PLA_run(N)
