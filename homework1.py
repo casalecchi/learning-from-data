@@ -129,7 +129,6 @@ def perceptron_run(N, runs=1000):
         pla = PLA(X)
         iterations += pla.fit(y)
         total_error += pla.divergence(target)
-        print(pla.w)
     mean_iterations = iterations / runs
     mean_divergence = total_error / runs
     print(f"N={N} - Iterações médias: {mean_iterations}")
