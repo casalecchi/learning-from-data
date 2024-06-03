@@ -255,6 +255,27 @@ def get_noisy_dataset(N, target: Target, noise=0.1):
 
     return X, y
 
+def plot_pocket_PLA(X, y, w, target:Target, title):
+    plt.figure(figsize=(8, 8))
+    plt.scatter(X[:, 0], X[:, 1], c=y, cmap='bwr', alpha=0.9)
+    
+    # Plotando função alvo
+    xs = np.linspace(-1, 1, 100)
+    ys = target.a * xs + target.b
+    plt.plot(xs, ys, label='$f$: Target Function')
+    # Plotando a função g
+    xs = np.linspace(-1, 1, 100)
+    ys = (-w[1] * xs - w[0]) / w[2]
+    plt.plot(xs, ys, label='$g$: Pocket PLA')
+
+    plt.xlabel('$x_1$')
+    plt.ylabel('$x_2$')
+    plt.title(title)
+    plt.xlim(-1, 1)
+    plt.ylim(-1, 1)
+    plt.legend()
+    plt.show()
+
 def pocket_PLA_run(N1, N2, max_iter, init_LR, runs=1000):
     ein = 0
     eout = 0
@@ -284,6 +305,9 @@ def pocket_PLA_run(N1, N2, max_iter, init_LR, runs=1000):
         # adiciona o erro para a média final depois ser calculada
         eout += get_error(X_test, y_test, w_pocket)
         ein += best_Ein
+
+    # Plotando gráfico com a função target e a função gerado pelo Pocket PLA
+    plot_pocket_PLA(X_test, y_test, w_pocket, target, title=f'Test Dataset for Pocket PLA with {'Linear Regression' if init_LR else 'No'} Initialization\nand {max_iter} iterations')
     
     mean_ein = ein / runs
     mean_eout = eout / runs
