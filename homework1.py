@@ -141,3 +141,40 @@ def perceptron_run(N, runs=1000):
 # target = Target()
 # X = get_dataset(100)
 # pla_plot(target, X)
+
+# ---------------------- LINEAR REGRESSION --------------------------
+
+class LinearRegression:
+    def __init__(self, X):
+        self.w = np.zeros(3)
+        self.X = np.c_[np.ones(X.shape[0]), X]
+    
+    def fit(self, y):
+        self.w = np.linalg.pinv(self.X.T.dot(self.X)).dot(self.X.T).dot(y)
+    
+def error(X, y, w):
+    X = np.c_[np.ones(X.shape[0]), X]
+    y_pred = np.sign(X.dot(w))
+    return np.mean(y_pred != y)
+
+def lin_reg_run(N, runs=1000):
+    ein = 0
+    eout = 0
+    for _ in range(runs):
+        target = Target()
+        X = get_dataset(N)
+        y = target.fit(X)
+        LR = LinearRegression(X)
+        LR.fit(y)
+        w = LR.w
+        ein += error(X, y, w)
+        new_X = get_dataset(N)
+        new_y = target.fit(new_X)
+        eout += error(new_X, new_y, w)
+    
+    mean_ein = ein / runs
+    mean_eout = eout / runs
+    print(f"Erro médio dentro da amostra: Ein = {mean_ein}")
+    print(f"Erro médio fora da amostra: Eout = {mean_eout}")
+
+lin_reg_run(100)
