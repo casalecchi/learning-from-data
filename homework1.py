@@ -172,7 +172,7 @@ def perceptron_run(N, runs=1000):
 # X = get_dataset(100)
 # pla_plot(target, X)
 
-# ---------------------- LINEAR REGRESSION --------------------------
+# -------------------------------- LINEAR REGRESSION -------------------------------------
 
 class LinearRegression:
     def __init__(self, X):
@@ -243,7 +243,22 @@ def LR_PLA_run(N, runs=1000):
 # N = 10
 # LR_PLA_run(N)
 
-def get_noisy_dataset(N, target: Target, noise=0.1):
+# Definindo a classe NonLinear, pois a função de gerar um dataset com noise vai utilizá-la também
+class NonLinear:
+    def __init__(self):
+        pass
+    
+    def fit(self, X):
+        return np.sign(X[:, 0]**2 + X[:, 1]**2 -0.6)
+    
+    def transform(self, X):
+        x1, x2 = X[:, 0], X[:, 1]
+        # pega os x1 e x2 e transforma
+        # não adicionei a coluna x0 com valor 1, pois na regressão linear ela será adicionada
+        X_trans = np.c_[x1, x2, x1 * x2, x1**2, x2**2]
+        return X_trans
+
+def get_noisy_dataset(N, target: Target | NonLinear, noise=0.1):
     # cria dataset e pega o seu valor correto
     X = get_dataset(N)
     y = target.fit(X)
@@ -324,7 +339,74 @@ topics = {
     "d) W0=LR, i=50, N1=100, N2=1000": [N1, N2, 50, True],
 }
 
-for key, value in topics.items():
-    print(key)
-    pocket_PLA_run(*value)
+# for key, value in topics.items():
+#     print(key)
+#     pocket_PLA_run(*value)
     
+
+# -------------------------------------- NON LINEAR REGRESSION -------------------------------------------
+
+# Classe NonLinear já definida
+
+def non_linear_run(N, runs=1000):
+    ein = 0
+    for _ in range(runs):
+        nonlinear = NonLinear()
+        X_noisy, y_noisy = get_noisy_dataset(N, nonlinear)
+        LR = LinearRegression(X_noisy)
+        LR.fit(y_noisy)
+        w = LR.w
+        ein += get_error(X_noisy, y_noisy, w)
+    
+    mean_ein = ein / runs
+    print(f'Média do Erro dentro da Amostra: Ein = {mean_ein}')
+
+N = 1000
+# non_linear_run(N)
+
+def transform_run(N, runs=1000):
+    ws = []
+    for _ in range(runs):
+        nonlinear = NonLinear()
+        X_noisy, y_noisy = get_noisy_dataset(N, nonlinear)
+        X_trans = nonlinear.transform(X_noisy)
+        LR = LinearRegression(X_trans)
+        LR.fit(y_noisy)
+        w = LR.w
+        ws.append(w)
+    
+    mean_ws = np.mean(ws, axis=0)
+    print(f'Pesos médios: {mean_ws}')
+    return mean_ws
+
+# ws = transform_run(N)
+
+# options = {
+#     "a": np.array([-1, -0.05, 0.08, 0.13, 1.5, 1.5]),
+#     "b": np.array([-1, -0.05, 0.08, 0.13, 1.5, 15]),
+#     "c": np.array([-1, -0.05, 0.08, 0.13, 15, 1.5]),
+#     "d": np.array([-1, -1.5, 0.08, 0.13, 0.05, 0.05]),
+#     "e": np.array([-1, -0.05, 0.08, 1.5, 0.15, 0.15]),
+# }
+
+# closest_hypothesis = min(options, key=lambda k: np.linalg.norm(ws - options[k]))
+# print(f"Hipótese escolhida: {closest_hypothesis}")
+
+def eout_nonlinear_run(N, runs=1000):
+    eout = 0
+    for _ in range(runs):
+        nonlinear = NonLinear()
+        X_noisy, y_noisy = get_noisy_dataset(N, nonlinear)
+        X_trans = nonlinear.transform(X_noisy)
+        LR = LinearRegression(X_trans)
+        LR.fit(y_noisy)
+        w = LR.w
+        X_test = get_dataset(N)
+        y_test = nonlinear.fit(X_test)
+        X_test = nonlinear.transform(X_test)
+        eout += get_error(X_test, y_test, w)
+
+    mean_eout = eout / runs
+    print(f'Média do Erro fora da Amostra: Eout = {mean_eout}')
+
+eout_nonlinear_run(N)
