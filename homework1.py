@@ -146,35 +146,49 @@ def perceptron_run(N, runs=1000):
 
 class LinearRegression:
     def __init__(self, X):
+        # inicializa pesos em 0
         self.w = np.zeros(3)
+        # adiciona coluna x0 com 1
         self.X = np.c_[np.ones(X.shape[0]), X]
     
     def fit(self, y):
+        # atualiza os pesos com a multiplicação da pseudo-inversa com y
         self.w = np.linalg.pinv(self.X.T.dot(self.X)).dot(self.X.T).dot(y)
     
-def error(X, y, w):
-    X = np.c_[np.ones(X.shape[0]), X]
-    y_pred = np.sign(X.dot(w))
-    return np.mean(y_pred != y)
+    def error(self, y, X=None):
+        # identifica se deve adicionar a coluna em X ou se X já existe na instância
+        X = self.X if not hasattr(X, 'shape') else np.c_[np.ones(X.shape[0]), X]
+        # faz a multiplicação de X com os pesos para prever o resultado
+        y_pred = np.sign(X.dot(self.w))
+        # retorna média de resultados errados
+        return np.mean(y_pred != y)
 
 def lin_reg_run(N, runs=1000):
     ein = 0
     eout = 0
     for _ in range(runs):
+        # cria função target, gera dados e respostas corretas
         target = Target()
         X = get_dataset(N)
         y = target.fit(X)
+
+        # treina a regressão linear com os dados seguindo a função target
         LR = LinearRegression(X)
         LR.fit(y)
-        w = LR.w
-        ein += error(X, y, w)
+        # calcula erro de dentro da amostra
+        ein += LR.error(y)
+
+        # gero novos dados e novas respostas seguindo a função target
         new_X = get_dataset(N)
         new_y = target.fit(new_X)
-        eout += error(new_X, new_y, w)
+        # calcula o erro dos novos dados seguindo o cálculo da Regressão Linear
+        eout += LR.error(new_y, new_X)
     
     mean_ein = ein / runs
     mean_eout = eout / runs
     print(f"Erro médio dentro da amostra: Ein = {mean_ein}")
     print(f"Erro médio fora da amostra: Eout = {mean_eout}")
 
-lin_reg_run(100)
+N = 100
+lin_reg_run(N)
+
