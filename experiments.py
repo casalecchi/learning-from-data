@@ -4,14 +4,13 @@ import random
 
 
 class Target:
+    """Classe para criação e manipulação de um a função target"""
     def __init__(self):
         a, b = self.get_coefficients()
         self.a = a
         self.b = b
 
     def get_coefficients(self):
-        """Criação da função alvo. Retorna uma função para usar com os pontos e seus respectivos
-        coeficientes, a e b"""
         # Gera pontos aleatórios
         x1, y1 = np.random.uniform(-1, 1, 2)
         x2, y2 = np.random.uniform(-1, 1, 2)
@@ -22,12 +21,10 @@ class Target:
     
     # Definição da função
     def fit(self, X):
-        """Dado um dataset X, retorna o seu y correspondente com o sinal em relação a função 
-        alvo"""
+        # Retorna o y dado um X, de uma função target
         return np.sign(X[:, 1] - (self.a * X[:, 0] + self.b))
 
     def plot(self, X, y):
-        "Visualização da função alvo e do Dataset criado"
         # Plotando os pontos do dataset e sua classificação
         plt.figure(figsize=(8, 8))
         plt.scatter(X[:, 0], X[:, 1], c=y, cmap='bwr', marker='o')
@@ -58,6 +55,7 @@ def get_dataset(N=100):
 # target.plot(X, y)
 
 class PLA:
+    """Classe para criação e manipulação de um Perceptron Learning Algorithm"""
     def __init__(self, X):
         # vetor de pesos inicializado com 0
         self.w = np.zeros(3)
@@ -65,15 +63,21 @@ class PLA:
         self.X = np.c_[np.ones(X.shape[0]), X]
     
     def fit(self, y, w=np.zeros(3)):
+        # peso inicial, se não for passado, igual a zero
         num_iters = 0
         
         while True:
+            # cálculo de y com pesos atuais
             y_pred = np.sign(np.dot(self.X, w))
+            
+            # separar y classificados erroneamente, verificar se convergiu e escolher um aleatoriamente
             misclassified = np.where(y_pred != y)[0]
             if len(misclassified) == 0:
                 self.w = w
                 return num_iters
             point = np.random.choice(misclassified)
+            
+            # ajustar peso para ponto escolhido
             w += y[point] * self.X[point]
             num_iters += 1
     
@@ -110,15 +114,17 @@ class PLA:
         return best_w, best_error
 
     def divergence(self, target: Target):
+        # verifica dado uma função target, o quanto a hipótese g difere
+        # gera dados de teste
         X_test = get_dataset(self.X.shape[0])
         y_test = target.fit(X_test)
         X_test = np.c_[np.ones(X_test.shape[0]), X_test]
         y_pred = np.sign(np.dot(X_test, self.w))
+        # compara as classificações da função target com as geradas pelo PLA
         error = np.mean(y_test != y_pred)
         return error
     
 def pla_plot(target: Target, X):
-    "Visualização da função alvo e do Dataset criado"
     # y - classificação correta de acordo com função alvo
     y = target.fit(X)
     # Plotando os pontos do dataset e sua classificação
@@ -132,12 +138,12 @@ def pla_plot(target: Target, X):
     # Plotando a função f
     xs = np.linspace(-1, 1, 100)
     ys = target.a * xs + target.b
-    plt.plot(xs, ys, label='$f$')
+    plt.plot(xs, ys, label='$f$: target function')
 
     # Plotando a função g
     xs = np.linspace(-1, 1, 100)
     ys = (-pla.w[1] * xs - pla.w[0]) / pla.w[2]
-    plt.plot(xs, ys, label='$g$')
+    plt.plot(xs, ys, label='$g$: PLA hypotesys')
     
     # Configuração do gráfico
     plt.xlim(-1, 1)
@@ -149,16 +155,21 @@ def pla_plot(target: Target, X):
     plt.legend()
     plt.show()
     
+# Experimento da questão
 def perceptron_run(N, runs=1000):
     iterations = 0
     total_error = 0
     for _ in range(runs):
+        # cria função target e dados
         target = Target()
         X = get_dataset(N)
         y = target.fit(X)
+        
+        # cria PLA, treino e divergência da função target
         pla = PLA(X)
         iterations += pla.fit(y)
         total_error += pla.divergence(target)
+
     mean_iterations = iterations / runs
     mean_divergence = total_error / runs
     print(f"N={N} - Iterações médias: {mean_iterations}")
@@ -175,6 +186,7 @@ def perceptron_run(N, runs=1000):
 # -------------------------------- LINEAR REGRESSION -------------------------------------
 
 class LinearRegression:
+    """Classe para criação e manipulação da Regressão Linear"""
     def __init__(self, X):
         # inicializa pesos em 0
         self.w = np.zeros(3)
@@ -192,6 +204,7 @@ def get_error(X, y, w):
         # retorna média de resultados errados
         return np.mean(y_pred != y)
 
+# Experimento da questão
 def lin_reg_run(N, runs=1000):
     ein = 0
     eout = 0
@@ -222,6 +235,7 @@ def lin_reg_run(N, runs=1000):
 # N = 100
 # lin_reg_run(N)
 
+# Experimento da questão
 def LR_PLA_run(N, runs=1000):
     iterations = 0
     for _ in range(runs):
@@ -245,10 +259,12 @@ def LR_PLA_run(N, runs=1000):
 
 # Definindo a classe NonLinear, pois a função de gerar um dataset com noise vai utilizá-la também
 class NonLinear:
+    """Classe para criação e manipulação de funções target não lineares"""
     def __init__(self):
         pass
     
     def fit(self, X):
+        # função passada no enunciado
         return np.sign(X[:, 0]**2 + X[:, 1]**2 -0.6)
     
     def transform(self, X):
@@ -271,6 +287,7 @@ def get_noisy_dataset(N, target: Target | NonLinear, noise=0.1):
     return X, y
 
 def plot_pocket_PLA(X, y, w, target:Target, title):
+    # Geração de gráfico do pocket PLA
     plt.figure(figsize=(8, 8))
     plt.scatter(X[:, 0], X[:, 1], c=y, cmap='bwr', alpha=0.9)
     
@@ -291,6 +308,7 @@ def plot_pocket_PLA(X, y, w, target:Target, title):
     plt.legend()
     plt.show()
 
+# Experimento da questão
 def pocket_PLA_run(N1, N2, max_iter, init_LR, runs=1000):
     ein = 0
     eout = 0
@@ -348,28 +366,39 @@ topics = {
 
 # Classe NonLinear já definida
 
+# Experimento da questão
 def non_linear_run(N, runs=1000):
     ein = 0
     for _ in range(runs):
+        # geração de dados não lineares com ruído
         nonlinear = NonLinear()
         X_noisy, y_noisy = get_noisy_dataset(N, nonlinear)
+        
+        # criação e treinamento do modelo de regressão linear
         LR = LinearRegression(X_noisy)
         LR.fit(y_noisy)
         w = LR.w
+
+        # cálculo do erro
         ein += get_error(X_noisy, y_noisy, w)
     
     mean_ein = ein / runs
     print(f'Média do Erro dentro da Amostra: Ein = {mean_ein}')
 
-N = 1000
+#N = 1000
 # non_linear_run(N)
 
+# Experimento da questão
 def transform_run(N, runs=1000):
     ws = []
     for _ in range(runs):
+        # geração de dados não lineares com ruído
         nonlinear = NonLinear()
         X_noisy, y_noisy = get_noisy_dataset(N, nonlinear)
+        # transformação nos dados
         X_trans = nonlinear.transform(X_noisy)
+
+        # criação e treinamento do modelo de regressão linear
         LR = LinearRegression(X_trans)
         LR.fit(y_noisy)
         w = LR.w
@@ -392,21 +421,30 @@ def transform_run(N, runs=1000):
 # closest_hypothesis = min(options, key=lambda k: np.linalg.norm(ws - options[k]))
 # print(f"Hipótese escolhida: {closest_hypothesis}")
 
+# Experimento da questão
 def eout_nonlinear_run(N, runs=1000):
     eout = 0
     for _ in range(runs):
+        # geração de dados não lineares com ruído
         nonlinear = NonLinear()
         X_noisy, y_noisy = get_noisy_dataset(N, nonlinear)
+        # transformação nos dados
         X_trans = nonlinear.transform(X_noisy)
+
+        # criação e treinamento do modelo de regressão linear
         LR = LinearRegression(X_trans)
         LR.fit(y_noisy)
         w = LR.w
+
+        # criação e transformação dos dados de teste
         X_test = get_dataset(N)
         y_test = nonlinear.fit(X_test)
         X_test = nonlinear.transform(X_test)
+        
+        # cálculo do erro 
         eout += get_error(X_test, y_test, w)
 
     mean_eout = eout / runs
     print(f'Média do Erro fora da Amostra: Eout = {mean_eout}')
 
-eout_nonlinear_run(N)
+# eout_nonlinear_run(N)
